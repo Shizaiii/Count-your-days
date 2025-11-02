@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>• STATIC • — analog horror (multi)</title>
+  <style>
+    /* Reset */
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body,#app{height:100%}
+    body{background:#000;color:#e6e6e6;font-family:Segoe UI, Roboto, Helvetica, Arial, sans-serif;overflow:hidden}
+
+    /* Grain & scanlines (global) */
+    .grain{position:fixed;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:.12;background-image:radial-gradient(circle at 20% 20%, rgba(255,255,255,.02) 0 1px, transparent 1px),radial-gradient(circle at 80% 60%, rgba(255,255,255,.02) 0 1px, transparent 1px);background-size:3px 3px, 4px 4px;z-index:40;animation:grainShift 7s linear infinite}
+    @keyframes grainShift{0%{transform:translateY(0)}50%{transform:translateY(3px)}100%{transform:translateY(0)}}
+    .scanlines{position:fixed;inset:0;pointer-events:none;mix-blend-mode:multiply;opacity:.22;background-image:linear-gradient(rgba(0,0,0,.05) 50%, transparent 50%);background-size:100% 3px;z-index:41}
+
+    /* Frame */
+    .frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1100px,94vw);height:min(640px,82vh);background:#030202;overflow:hidden;border-radius:6px;box-shadow:0 30px 80px rgba(0,0,0,.8);border:6px solid rgba(40,40,40,.8)}
+    .frame::after{content:'';position:absolute;inset:0;border-radius:2px;pointer-events:none;box-shadow:inset 0 100px 200px rgba(0,0,0,.6)}
+
+    .screen{position:relative;inset:0;width:100%;height:100%;background:linear-gradient(180deg,#060606,#0b0b0b);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:28px}
+
+    h1.title{font-size:clamp(18px,3vw,36px);letter-spacing:2px;color:#cfcfcf;text-transform:uppercase;margin-bottom:10px}
+    p.tag{font-size:12px;opacity:.6;margin-bottom:18px}
+
+    .controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,.07);color:#eaeaea;padding:12px 18px;border-radius:6px;backdrop-filter:blur(2px);cursor:pointer;font-weight:700;letter-spacing:1px;position:relative;overflow:hidden}
+    button.ghost:active{transform:translateY(1px)}
+    button.ghost:focus{outline:2px dashed rgba(255,255,255,.12);outline-offset:4px}
+
+    .vhs-scan{position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:0}
+    .vhs-scan.active{opacity:.8;animation:vhs .9s steps(4) infinite}
+    @keyframes vhs{0%{background:linear-gradient(90deg, rgba(0,0,0,.08), rgba(255,255,255,.02), rgba(0,0,0,.08))}50%{background:linear-gradient(90deg, rgba(0,0,0,.6), rgba(255,255,255,.18), rgba(0,0,0,.6))}100%{background:linear-gradient(90deg, rgba(0,0,0,.08), rgba(255,255,255,.02), rgba(0,0,0,.08))}}
+
+    /* Modal used as story container for SPA pages */
+    .story-wrap{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+    .story-box{width:86%;max-width:820px;padding:24px;border-radius:6px;background:rgba(2,2,2,.86);border:1px solid rgba(255,255,255,.03);box-shadow:0 10px 40px rgba(0,0,0,.7);min-height:260px}
+
+    .story-content{font-family:monospace;font-size:18px;line-height:1.6;color:#e6e6e6;white-space:pre-wrap;word-break:break-word;opacity:0}
+
+    /* Different font classes for each story */
+    .f1{font-family:'Courier New', Courier, monospace;letter-spacing:0.6px}
+    .f2{font-family:Georgia, 'Times New Roman', serif;font-style:italic}
+    .f3{font-family:'Lucida Console', Monaco, monospace;letter-spacing:0.4px}
+    .f4{font-family:'Brush Script MT', 'Comic Sans MS', cursive;font-size:22px}
+    .f5{font-family:Tahoma, Geneva, sans-serif}
+
+    /* typewriter caret */
+    .caret{display:inline-block;width:10px;background:#e6e6e6;margin-left:6px;opacity:0.9}
+
+    .footer{position:absolute;left:12px;bottom:12px;font-size:11px;opacity:.5}
+    .hint{position:absolute;right:12px;bottom:12px;font-size:12px;opacity:.55}
+
+    /* small animations */
+    .shiver{animation:shiver .6s ease-in-out}
+    @keyframes shiver{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}100%{transform:translateX(0)}}
+    .pulse{animation:pulse 700ms ease-out}
+    @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
+
+    .warning{position:fixed;top:18px;left:18px;font-size:13px;opacity:.85;z-index:70}
+
+    /* back button */
+    .back{display:inline-block;margin-top:18px;padding:10px 14px;border-radius:6px;border:1px solid rgba(255,255,255,.06);background:transparent;color:#ddd;cursor:pointer}
+
+    /* subtle responsive */
+    @media (max-width:600px){
+      .story-box{width:92%}
+      .story-content{font-size:16px}
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="grain"></div>
+    <div class="scanlines"></div>
+
+    <div class="frame" role="application" aria-label="Analog horror interface">
+      <div class="screen" id="screen">
+        <h1 class="title" id="title">• STATIC •</h1>
+        <p class="tag">an interactive analog horror — explore the signal</p>
+
+        <div class="controls" id="mainControls">
+          <button class="ghost" data-target="#s1">suffering</button>
+          <button class="ghost" data-target="#s2">bastard</button>
+          <button class="ghost" data-target="#s3">confessions</button>
+          <button class="ghost" data-target="#s4">things</button>
+          <button class="ghost" data-target="#s5">...</button>
+        </div>
+
+        <div class="story-wrap" id="storyWrap" style="display:none">
+          <div class="story-box">
+            <div id="storyContent" class="story-content f1" aria-live="polite"></div>
+            <div style="text-align:right"><button id="backBtn" class="back">← return to signal</button></div>
+          </div>
+        </div>
+
+        <div class="vhs-scan" id="vhsScan"></div>
+        <div class="footer">— do not trust the signal —</div>
+        <div class="hint">tab to focus • audio created procedurally</div>
+      </div>
+    </div>
+
+    <div class="warning">⚠️ Contains flashing lights & abrupt audio — may be intense.</div>
+  </div>
+
+  <script>
+    // --- Audio setup (kept active on all pages) ---
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new (AudioCtx)();
+    function playNoise(duration = 0.6, volume = 0.18) {
+      const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.random() * 0.8;
+      const source = audioCtx.createBufferSource(); source.buffer = buffer;
+      const g = audioCtx.createGain(); g.gain.value = volume;
+      source.connect(g).connect(audioCtx.destination);
+      source.start(); source.stop(audioCtx.currentTime + duration);
+    }
+
+    function playClick(freq=1200, dur=0.08, vol=0.12){
+      const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+      o.type = 'square'; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g).connect(audioCtx.destination); o.start();
+      o.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + dur);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+      o.stop(audioCtx.currentTime + dur + 0.02);
+    }
+
+    function playRumble(time=0.8, vol=0.12){
+      const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = 30 + Math.random()*40; g.gain.value = vol;
+      o.connect(g).connect(audioCtx.destination); o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + time);
+      o.stop(audioCtx.currentTime + time + 0.05);
+    }
+
+    // --- speech (whispers) ---
+    function whisper(text){ if('speechSynthesis' in window){ const u = new SpeechSynthesisUtterance(text); u.rate=0.9; u.pitch=0.3; u.volume=0.6; u.lang='en-US'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }}
+
+    // --- UI ---
+    const controls = document.getElementById('mainControls');
+    const storyWrap = document.getElementById('storyWrap');
+    const storyContent = document.getElementById('storyContent');
+    const backBtn = document.getElementById('backBtn');
+    const vhs = document.getElementById('vhsScan');
+    const title = document.getElementById('title');
+
+    const pages = {
+      '#s1': {title:'Sufferings', cls:'f1', text:`You are the textbook example of "annoying". Small cruelties pile up — mockery whispered in class, careless shoves, laughter that digs. I kept quiet; I kept count. This broadcast is for you and the ones who watched. Read on.`},
+      '#s2': {title:'Bastards', cls:'f2', text:`There are names that hide in the corners: J⧫⧫⧫⧫, R⧫⧫⧫, S⧫⧫⧫⧫ — faces that point and laugh. Bullying a quiet kid isn't a game. This is not pleading; it's a record. Turn the page.`},
+      '#s3': {title:'Confession', cls:'f3', text:`I kept notes. Whispers, screenshots, small cruelties that form a ledger. I write this so those moments cannot vanish. Read the next page — the list grows.`},
+      '#s4': {title:'Things', cls:'f4', text:`Slurs toward the teacher. Mock accounts. Food used as a show. Academic lies your parents don't know about. These things add up. Be aware of the trail you leave.`},
+      '#s5': {title:'...', cls:'f5', text:`Count the nights you slept without sleep. Remember the faces that turned away. The signal keeps a ledger.`}
+    };
+
+    // word-by-word typewriter with font switching every 4-8 words
+    async function typeReveal(text, elem, cls){
+      elem.style.opacity = 0; elem.innerHTML = '';
+      await sleep(160);
+      elem.style.opacity = 1;
+
+      const words = text.split(/(\s+)/); // keep spaces as tokens
+      const fontClasses = ['f1','f2','f3','f4','f5'];
+      let wordsUntilSwitch = 4 + Math.floor(Math.random()*5);
+      let wordCounter = 0;
+      // pick initial font
+      elem.className = 'story-content ' + fontClasses[Math.floor(Math.random()*fontClasses.length)];
+
+      for (let i=0;i<words.length;i++){
+        const token = words[i];
+        elem.insertAdjacentText('beforeend', token);
+        if(!/^\s+$/.test(token)){
+          wordCounter++;
+          playClick(800 + Math.random()*1400, 0.03, 0.04 + Math.random()*0.06);
+        }
+        // random tiny glitch
+        if(Math.random() < 0.04 && !/^\s+$/.test(token)){
+          const span = document.createElement('span'); span.textContent = token.trim(); span.style.color='#f03'; span.style.mixBlendMode='screen';
+          const html = elem.innerHTML;
+          elem.innerHTML = html.replace(token, span.outerHTML);
+          await sleep(40 + Math.random()*80);
+        }
+        if(wordCounter >= wordsUntilSwitch){
+          // switch font
+          const next = fontClasses[Math.floor(Math.random()*fontClasses.length)];
+          elem.className = 'story-content ' + next;
+          wordCounter = 0; wordsUntilSwitch = 4 + Math.floor(Math.random()*5);
+        }
+        await sleep(80 + Math.random()*180);
+      }
+
+      await sleep(200 + Math.random()*300);
+      playRumble(0.9,0.06);
+      whisper(text.split('\n').slice(-1)[0] || text);
+    }
+
+    function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+    // Routing logic (hash-based) - acts like separate pages
+    async function navigateTo(hash){
+      if(!hash || !pages[hash]){
+        // show main
+        storyWrap.style.display='none'; controls.style.display='flex'; title.textContent='• STATIC •';
+        vhs.classList.remove('active'); setTimeout(()=>vhs.classList.add('active'), 300);
+        history.replaceState(null,'', window.location.pathname);
+        return;
+      }
+      controls.style.display='none'; storyWrap.style.display='flex';
+      const page = pages[hash];
+      title.textContent = page.title;
+      vhs.classList.add('active');
+      // reveal slowly
+      await typeReveal(page.text, storyContent, page.cls);
+    }
+
+    // attach control listeners
+    document.querySelectorAll('button.ghost').forEach(btn=>{
+      btn.addEventListener('click',async (e)=>{
+        if(audioCtx.state === 'suspended') await audioCtx.resume();
+        playClick(1400,0.04,0.08); btn.classList.add('pulse'); setTimeout(()=>btn.classList.remove('pulse'),700);
+        const target = btn.dataset.target;
+        if(target){
+          history.pushState({},'', target);
+          navigateTo(target);
+        }
+      });
+      btn.addEventListener('mouseenter',()=>{ if(audioCtx.state !== 'suspended') playClick(1200,.03,.06); });
+    });
+
+    backBtn.addEventListener('click', async ()=>{
+      if(audioCtx.state === 'suspended') await audioCtx.resume();
+      playClick(800,.04,.09);
+      history.pushState({},'', '/');
+      navigateTo(null);
+    });
+
+    // handle browser back/forward
+    window.addEventListener('popstate', ()=>{ navigateTo(window.location.hash || null); });
+
+    // small auto-text changes while idle
+    setInterval(()=>{ if(Math.random()>0.94) title.textContent = ['• STATIC •','• ERROR •','• WATCH •','• LOST •'][Math.floor(Math.random()*4)]; }, 2500);
+
+    // initial tiny flicker
+    setTimeout(()=>{vhs.classList.add('active'); setTimeout(()=>vhs.classList.remove('active'),800)}, 600);
+
+    // start on hash if present
+    navigateTo(window.location.hash || null);
+
+    // expose a setter so you can later programmatically replace story text in dev tools
+    window._ANALOG_PAGES = pages;
+
+  </script>
+</body>
+</html>
